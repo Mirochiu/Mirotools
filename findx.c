@@ -11,7 +11,7 @@ inline int xchar2int(char);
 
 int main(int argc, char *argv[])
 {
-    int i, nl, ln, tmp, len, no_option_cnt=0, targetlen, ti;
+    int i,nl,ln,tmp,len,no_option_cnt=0,targetlen,ti,returnval=0;
     char filename[1024]={0};
     unsigned char* target = NULL;
     int offset=0, length=-1;
@@ -38,21 +38,24 @@ int main(int argc, char *argv[])
                 case 's':
                     if(i+1>=argc)
                     {
-                        fprintf(stderr, "findx : need more arg for option '%s'\n", argv[i]);
-                        return 1;
+                        fprintf(stderr,"findx : need more arg for option '%s'\n",argv[i]);
+                        returnval=1;
+                        goto FreeMelloc;
                     }
                     offset=decimal_parser(argv[++i]); continue;
                 case 'n':
                     if(i+1>=argc)
                     {
-                        fprintf(stderr, "findx : need more arg for option '%s'\n", argv[i]);
-                        return 1;
+                        fprintf(stderr,"findx : need more arg for option '%s'\n",argv[i]);
+                        returnval=1;
+                        goto FreeMelloc;
                     }
                     length=decimal_parser(argv[++i]); continue;
                 default: break;
             }
-            fprintf(stderr, "findx : unknown option '%s'\n", argv[i]);
-            return 1;
+            fprintf(stderr,"findx : unknown option '%s'\n",argv[i]);
+            returnval=1;
+            goto FreeMelloc;
         }
         else
         {
@@ -63,13 +66,14 @@ int main(int argc, char *argv[])
                 fp=fopen(filename, "rb");
                 if(!fp)
                 {
-                    fprintf(stderr, "findx : file '%s' is not exist.\n",filename);
-                    return 1;
+                    fprintf(stderr,"findx : file '%s' is not exist.\n",filename);
+                    returnval=1;
+                    goto FreeMelloc;
                 }
             }
             else if (no_option_cnt==2)
             {
-                int c=0, prefix=0, isoddlen, ti=0;
+                int c=0,prefix=0,isoddlen,ti=0;
                 int slen=strlen(argv[i]);
                 /* check format */
                 if (slen>=2 && argv[i][0]=='0' && (argv[i][1]=='x' || argv[i][1]=='X'))
@@ -84,8 +88,9 @@ int main(int argc, char *argv[])
                 for(c=prefix; c<slen; ++c)
                 {
                     if (!isxdigit(argv[i][c])) {
-                        fprintf(stderr, "findx : invalid format for target '%s'\n",argv[i]);
-                        return 1;
+                        fprintf(stderr,"findx : invalid format for target '%s'\n",argv[i]);
+                        returnval=1;
+                        goto FreeMelloc;
                     }
                 }
                 isoddlen=targetlen&0x01;
@@ -94,8 +99,9 @@ int main(int argc, char *argv[])
                 target=(unsigned char*)malloc(targetlen);
                 if (!target)
                 {
-                    fprintf(stderr, "findx : cannot allocat the target bytes '%s'\n",argv[i]);
-                    return 1;
+                    fprintf(stderr,"findx : cannot allocat the target bytes '%s'\n",argv[i]);
+                    returnval=1;
+                    goto FreeMelloc;
                 }
                 if (isoddlen)
                 {
@@ -112,13 +118,15 @@ int main(int argc, char *argv[])
     }// end for
     if(!fp)
     {
-        fprintf(stderr, "findx : you should specified a file for print.\n");
-        return 1;
+        fprintf(stderr,"findx : you should specified a file for print.\n");
+        returnval=1;
+        goto FreeMelloc;
     }
     if(targetlen<=0)
     {
-        fprintf(stderr, "findx : you should specified target bytes for find.\n");
-        return 1;
+        fprintf(stderr,"findx : you should specified target bytes for find.\n");
+        returnval=1;
+        goto FreeMelloc;
     }
     if(length<0)
     {
@@ -127,8 +135,9 @@ int main(int argc, char *argv[])
     }
     if(offset<0 || PRINT_LEN>get_file_length(fp))
     {
-        fprintf(stderr, "findx : search range(%d~%d) out of file size(%ld).\n",offset,PRINT_LEN,get_file_length(fp));
-        return 1;
+        fprintf(stderr,"findx : search range(%d~%d) out of file size(%ld).\n",offset,PRINT_LEN,get_file_length(fp));
+        returnval=1;
+        goto FreeMelloc;
     }
     fseek(fp,offset,SEEK_SET);
     printf("File name: %s, File size: %ld\nOffset: %d(%08Xh), search length: %d(%08Xh)\n",
@@ -140,7 +149,7 @@ int main(int argc, char *argv[])
     ti=0;
     for(i=0; i<length; i++)
     {
-        c = fgetc(fp);
+        c=fgetc(fp);
         if (c == EOF)
             break;
         if (c==target[ti])
@@ -154,18 +163,30 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if (ti>1)
+            if (ti)
             {
                 /* when check fail, seek to first check pos */
                 fseek(fp,-ti,SEEK_CUR);
                 i = i-ti;
+                ti = 0;
             }
-            ti = 0;
         }
     }
     printf("%d bytes searched!\n",length);
-    fclose(fp);
-    return 0;
+
+FreeMelloc:
+    if (fp)
+    {
+        fclose(fp);
+        fp=NULL;
+    }
+    if (target)
+    {
+        free(target);
+        target=NULL;
+    }
+
+    return returnval;
 }
 
 long get_file_length(FILE* fp)

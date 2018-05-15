@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
     int offset=0, length=-1;
     FILE* fp=NULL;
     unsigned char c, ch[16];
+    int isstrformat = 0;
     for(i=0; i<16; i++)
         ch[i]=255;
     if(argc<=1)
@@ -88,30 +89,51 @@ int main(int argc, char *argv[])
                 for(c=prefix; c<slen; ++c)
                 {
                     if (!isxdigit(argv[i][c])) {
-                        fprintf(stderr,"findx : invalid format for target '%s'\n",argv[i]);
+                        fprintf(stderr,"findx : invalid hex/binary format for target '%s'\n",argv[i]);
+                        fprintf(stderr,"findx : try string format\n");
+                        break;
+                        //returnval=1;
+                        //goto FreeMelloc;
+                    }
+                }
+                // string format
+                if (c != slen)
+                {
+                    for(c=prefix; c<slen; ++c)
+                    {
+                        if (!isprint(argv[i][c])) {
+                            fprintf(stderr,"findx : invalid string format(not printable) for target '%s'\n",argv[i]);
+                            returnval=1;
+                            goto FreeMelloc;
+                        }
+                    }
+                    targetlen=slen;
+                    target=(unsigned char*)malloc(targetlen);
+                    memcpy(target, argv[i], targetlen);
+                    isstrformat = 1;
+                }
+                else
+                {
+                    isoddlen=targetlen&0x01;
+                    targetlen+=isoddlen;
+                    targetlen/=2;
+                    target=(unsigned char*)malloc(targetlen);
+                    if (!target)
+                    {
+                        fprintf(stderr,"findx : cannot allocate the target bytes '%s'\n",argv[i]);
                         returnval=1;
                         goto FreeMelloc;
                     }
-                }
-                isoddlen=targetlen&0x01;
-                targetlen+=isoddlen;
-                targetlen/=2;
-                target=(unsigned char*)malloc(targetlen);
-                if (!target)
-                {
-                    fprintf(stderr,"findx : cannot allocat the target bytes '%s'\n",argv[i]);
-                    returnval=1;
-                    goto FreeMelloc;
-                }
-                if (isoddlen)
-                {
-                    target[0]=xchar2int(argv[i][prefix]);
-                    ti=1;
-                    prefix+=1;
-                }
-                for (c=prefix; c+1<slen; c+=2)
-                {
-                    target[ti++]=(xchar2int(argv[i][c])<<4)+xchar2int(argv[i][c+1]);
+                    if (isoddlen)
+                    {
+                        target[0]=xchar2int(argv[i][prefix]);
+                        ti=1;
+                        prefix+=1;
+                    }
+                    for (c=prefix; c+1<slen; c+=2)
+                    {
+                        target[ti++]=(xchar2int(argv[i][c])<<4)+xchar2int(argv[i][c+1]);
+                    }
                 }
             }// end if no_option_cnt
         }
@@ -146,6 +168,10 @@ int main(int argc, char *argv[])
     for(i=0; i<targetlen; ++i)
         printf("%02X ",target[i]);
     printf("\n");
+    if (isstrformat)
+    {
+        printf("Target string:'%s'\n", target);
+    }
     ti=0;
     for(i=0; i<length; i++)
     {

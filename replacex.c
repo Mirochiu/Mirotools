@@ -10,14 +10,15 @@ int decimal_parser(const char*);
 
 int main(int argc, char *argv[])
 {
-    int i,nl,ln,tmp,len,no_option_cnt=0;
+    int nl,ln,tmp,len,no_option_cnt=0;
     int targetlen,ti,replacementlen,returnVal=0;
     char filename[1024]={0};
     unsigned char* target=NULL;
     unsigned char* replacement=NULL;
-    int offset=0,length=-1;
+    long i,offset=0,length=-1;
     FILE* fp=NULL;
-    unsigned char c, ch[16];
+    unsigned char c,ch[16];
+    int replaced_cnt;
     for(i=0; i<16; i++)
         ch[i]=255;
     if(argc<=1)
@@ -114,12 +115,12 @@ int main(int argc, char *argv[])
     }
     if(offset<0 || PRINT_LEN>get_file_length(fp))
     {
-        fprintf(stderr,"replacex : search range(%d~%d) out of file size(%ld).\n",offset,PRINT_LEN,get_file_length(fp));
+        fprintf(stderr,"replacex : search range(%ld~%ld) out of file size(%ld).\n",offset,PRINT_LEN,get_file_length(fp));
         returnVal=1;
         goto FreeMelloc;
     }
     fseek(fp,offset,SEEK_SET);
-    printf("File name: %s, File size: %ld\nOffset: %d(%08Xh), search length: %d(%08Xh)\n",
+    printf("File name: %s, File size: %ld\nOffset: %ld(%08lXh), search length: %ld(%08lXh)\n",
         filename,get_file_length(fp),offset,offset,length,length);
     printf("Target bytes:");
     for(i=0; i<targetlen; ++i)
@@ -136,12 +137,12 @@ int main(int argc, char *argv[])
         {
             ++ti;
             if (ti==targetlen) {
-                printf("match @ %d (0x%08Xh)\n",i+offset-targetlen+1,i+offset-targetlen+1);
+                printf("match @ %ld (0x%08lXh)\n",i+offset-targetlen+1,i+offset-targetlen+1);
                 replaced_cnt++;
-                printf("%d", ftell(fp));
+                printf("%ld", ftell(fp));
                 fseek(fp,-ti,SEEK_CUR);
                 fwrite(replacement,1,ti,fp);
-                printf("%d", ftell(fp));
+                printf("%ld", ftell(fp));
                 ti = 0;
             }
         }
@@ -156,7 +157,7 @@ int main(int argc, char *argv[])
             ti = 0;
         }
     }
-    printf("%d bytes checked, %d replaeced!\n",length,replaced_cnt);
+    printf("%ld bytes checked, %d replaeced!\n",length,replaced_cnt);
     fflush(fp);
     fclose(fp);
 

@@ -81,9 +81,10 @@ int main(int argc, char *argv[])
             }
             else if (no_option_cnt==3)
             {
-                replacementlen=strlen(argv[i]);
-                replacement=(unsigned char*)malloc(targetlen); // replace way=memcpy
-                memset(replacement,0,targetlen); // clear data
+                replacementlen=strlen(argv[i])+1; // c-string
+                if (replacementlen>targetlen) replacementlen = targetlen;
+                replacement=(unsigned char*)malloc(replacementlen); // replace way=memcpy
+                memset(replacement,0,replacementlen); // clear data
                 memcpy(replacement,argv[i],replacementlen);
             }
             // end if no_option_cnt
@@ -124,7 +125,11 @@ int main(int argc, char *argv[])
         filename,get_file_length(fp),offset,offset,length,length);
     printf("Target bytes:");
     for(i=0; i<targetlen; ++i)
-        printf("%c(%02Xh) ",target[i],target[i]);
+        printf("%c(%02Xh) ",(isprint(target[i])?target[i]:' '),target[i]);
+    printf("\n");
+    printf("Replace bytes:");
+    for(i=0; i<replacementlen; ++i)
+        printf("%c(%02Xh) ",replacement[i],replacement[i]);
     printf("\n");
     ti=0;
     replaced_cnt=0;
@@ -139,10 +144,10 @@ int main(int argc, char *argv[])
             if (ti==targetlen) {
                 printf("match @ %ld (0x%08lXh)\n",i+offset-targetlen+1,i+offset-targetlen+1);
                 replaced_cnt++;
-                printf("%ld", ftell(fp));
+                //printf("%ld", ftell(fp));
                 fseek(fp,-ti,SEEK_CUR);
                 fwrite(replacement,1,ti,fp);
-                printf("%ld", ftell(fp));
+                //printf("%ld", ftell(fp));
                 ti = 0;
             }
         }
@@ -157,7 +162,7 @@ int main(int argc, char *argv[])
             ti = 0;
         }
     }
-    printf("%ld bytes checked, %d replaeced!\n",length,replaced_cnt);
+    printf("%ld bytes checked, %d replaced!\n",length,replaced_cnt);
     fflush(fp);
     fclose(fp);
 
